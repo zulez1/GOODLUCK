@@ -30,6 +30,10 @@
             0% { transform: scale(0.8) translateY(30px); opacity: 0; }
             100% { transform: scale(1) translateY(0); opacity: 1; }
         }
+        @keyframes prize-fade-out {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.8); }
+        }
 
         .container { position: relative; text-align: center; z-index: 10; width: 100%; max-width: 1200px; display: flex; flex-direction: column; align-items: center; }
         .header h1 { font-size: 58px; margin: 0; font-weight: 900; letter-spacing: -1px; }
@@ -62,13 +66,19 @@
             max-width: 600px;
             opacity: 0;
             transform: scale(0.8) translateY(30px);
-            transition: all 0.5s ease;
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
         
         .prize-block.show {
             opacity: 1;
             transform: scale(1) translateY(0);
             animation: prize-pop 0.6s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+        }
+        
+        .prize-block.hide {
+            opacity: 0;
+            transform: scale(0.8);
+            animation: prize-fade-out 0.5s ease forwards;
         }
         
         .prize-label {
@@ -282,6 +292,7 @@
     let totalRot = 0;
     let lastIdx = -1;
     let currentUser = null;
+    let prizeTimeout = null;
 
     // Применение настроек блоков
     function applyBlockSettings() {
@@ -344,6 +355,26 @@
             oscillator.start();
             oscillator.stop(audioCtx.currentTime + 0.5);
         });
+    }
+
+    function hidePrizeAfterDelay() {
+        // Очищаем предыдущий таймер, если он был
+        if (prizeTimeout) {
+            clearTimeout(prizeTimeout);
+        }
+        
+        // Устанавливаем новый таймер на 8 секунд
+        prizeTimeout = setTimeout(() => {
+            const prizeBlock = document.getElementById('prizeBlock');
+            prizeBlock.classList.remove('show');
+            prizeBlock.classList.add('hide');
+            
+            // Очищаем текст приза после скрытия
+            setTimeout(() => {
+                document.getElementById('prizeDisplay').textContent = '—';
+                prizeBlock.classList.remove('hide');
+            }, 500); // Ждем завершения анимации скрытия
+        }, 8000); // 8 секунд
     }
 
     function draw() {
@@ -438,7 +469,13 @@
         
         // Скрываем блок с выигрышем
         const prizeBlock = document.getElementById('prizeBlock');
-        prizeBlock.classList.remove('show');
+        prizeBlock.classList.remove('show', 'hide');
+        
+        // Очищаем предыдущий таймер
+        if (prizeTimeout) {
+            clearTimeout(prizeTimeout);
+            prizeTimeout = null;
+        }
         
         // Очищаем предыдущий результат
         document.getElementById('prizeDisplay').textContent = '—';
@@ -465,6 +502,9 @@
             // Обновляем блок "ВЫИГРЫШ" и показываем его с анимацией
             document.getElementById('prizeDisplay').textContent = prize;
             prizeBlock.classList.add('show');
+            
+            // Запускаем таймер для скрытия блока через 8 секунд
+            hidePrizeAfterDelay();
             
             // Воспроизводим звуки и конфетти
             winAudio.play().catch(e => console.log('Win audio failed:', e));
